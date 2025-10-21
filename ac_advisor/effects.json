@@ -1,0 +1,12 @@
+{
+  "setpoint_slope_W_per_deg": 0.0,
+  "fan_slope_W_per_level": 0.0,
+  "recirc_gain_W": 0.0,
+  "per_vehicle_scale": {
+    "default": 1.0,
+    "ICE": 1.0,
+    "HEV": 1.05,
+    "PHEV": 1.1,
+    "EV": 1.2
+  }
+}

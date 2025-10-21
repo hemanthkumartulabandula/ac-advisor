@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+venv/
+
+# Node/OS cruft
+node_modules/
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Local artifacts
+exports/
+logs/
+.tmp/
+.cache/

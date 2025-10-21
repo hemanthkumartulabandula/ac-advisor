@@ -1,0 +1,53 @@
+{
+  "row_index": 50,
+  "contribs": [
+    {
+      "feature": "voltage_drop",
+      "shap": -309.64141742049407
+    },
+    {
+      "feature": "bat_voltage",
+      "shap": -290.5802994524816
+    },
+    {
+      "feature": "voltage_smoothed",
+      "shap": -44.500975482362705
+    },
+    {
+      "feature": "rpm",
+      "shap": -42.59257367595832
+    },
+    {
+      "feature": "bat_voltage_rollmean_3",
+      "shap": -42.5595891989656
+    },
+    {
+      "feature": "bat_voltage_lag_1",
+      "shap": -26.247948620720173
+    },
+    {
+      "feature": "rpm_smoothed",
+      "shap": -5.541889056534287
+    },
+    {
+      "feature": "ac_on_label",
+      "shap": -4.885330145174858
+    },
+    {
+      "feature": "rpm_rollmean_3",
+      "shap": -2.8792046007634933
+    },
+    {
+      "feature": "rpm_lag_1",
+      "shap": 2.531567459377588
+    },
+    {
+      "feature": "temperature_rollmean_3",
+      "shap": 1.912649754129811
+    },
+    {
+      "feature": "engine_load",
+      "shap": -1.6214375659342954
+    }
+  ]
+}
