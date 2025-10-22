@@ -1,8 +1,26 @@
-streamlit==1.36.0
+# --- Core Streamlit + UI ---
+streamlit==1.40.2          # includes st.segmented_control()
+
+# --- Data processing ---
 pandas==2.2.2
 numpy==1.26.4
+
+# --- Modeling ---
 catboost==1.2.7
+
+# --- Visualization ---
 altair==5.3.0
+matplotlib==3.8.4
+
+# --- Explainability stack (optional, compatible with Py 3.11) ---
+shap==0.46.0
+numba==0.59.1
+llvmlite==0.42.0
+
+# --- Utilities ---
 pyyaml==6.0.1
 reportlab==4.2.2
-matplotlib==3.8.4
+
+# --- Optional helpful libs that Streamlit often expects ---
+scipy==1.16.2
+plotly==6.3.1
