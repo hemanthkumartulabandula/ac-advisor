@@ -230,10 +230,34 @@ st.markdown(
     unsafe_allow_html=True
 )
 hint = effect_hint(ambient, recirc_on)
-st.info(
-    f"Ambient: **{ambient:.1f} °C**  •  ΔT = cabin − ambient = **{dT:+.1f} °C**  •  {hint}\n\n"
-    "Band rules: **Heating (≤ 9 °C)** • **Mild (9–15 °C)** • **Cooling (≥ 15 °C)**."
+# --- Comfort Band Info Banner ---
+band_bg = {
+    "cold": "#1e3a8a",   # blue for heating
+    "mild": "#374151",   # gray for mild
+    "hot":  "#7c2d12"    # brown-red for cooling
+}.get(mode_key, "#334155")
+
+st.markdown(
+    f"""
+    <div style="
+        background:{band_bg};
+        padding: 1rem 1.2rem;
+        border-radius: 10px;
+        color: white;
+        font-size: 0.95rem;
+        line-height: 1.55;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+        margin-bottom: 0.5rem;
+    ">
+        <b>Ambient:</b> {ambient:.1f} °C &nbsp;
+        <br><b>ΔT (cabin − ambient):</b> {dT:+.1f} °C  
+        <br><b>Condition:</b> {hint}
+        <br><b>Band rules:</b> Heating (≤ 9 °C)  •  Mild (9–15 °C)  •  Cooling (≥ 15 °C)
+    </div>
+    """,
+    unsafe_allow_html=True
 )
+
 with st.expander("What do these bands mean?"):
     st.markdown(
         """
@@ -333,7 +357,7 @@ with st.sidebar:
 speed_val = float(row.get("speed", 0)) if "speed" in row.columns else None
 coach = nearest_context_advice(ambient, speed_val)
 
-with st.expander("💡 Coach: best action for this context", expanded=True):
+with st.expander("Coach: best action for this context", expanded=True):
     st.caption(coach.get("explanation", ""))
     if coach.get("n", 0):
         st.caption(f"Samples in this context: **{coach.get('n', 0)}**")
@@ -388,7 +412,7 @@ with st.expander("💡 Coach: best action for this context", expanded=True):
                     st.rerun()
 
 # ### PHASE 4: Trip Replay with uncertainty band + cumulative Wh
-with st.expander("📈 Trip Replay (±150 rows around selection)", expanded=False):
+with st.expander("Trip Replay (±150 rows around selection)", expanded=False):
     try:
         w = 150
         i0 = max(0, row_idx - w)
@@ -474,36 +498,7 @@ with st.expander("📈 Trip Replay (±150 rows around selection)", expanded=Fals
         st.error("Trip Replay failed.")
         st.exception(e)
 
-# --- Debug: show baseline vs simulated proxy values ---
-with st.expander("🛠 Debug: baseline vs simulated proxy values", expanded=False):
-    sp_col, fan_col, rh_col = proxy_cols["setpoint"], proxy_cols["fan"], proxy_cols["recirc"]
-    show_cols = [c for c in [sp_col, fan_col, rh_col] if c in X_sim.columns]
-    if show_cols:
-        st.write("Columns:", show_cols)
-        st.write("Baseline:", X_now[show_cols].iloc[0].to_dict())
-        st.write("Simulated:", X_sim[show_cols].iloc[0].to_dict())
-    else:
-        st.info("Proxy columns not found in X matrices (unexpected).")
 
-# --- Sanity test: prove model reacts to proxy columns ---
-with st.expander("🧪 Sanity test: +50% bump on proxy columns", expanded=False):
-    import copy
-    X_bump = copy.deepcopy(X_now)
-    for col in [proxy_cols["setpoint"], proxy_cols["fan"], proxy_cols["recirc"]]:
-        if col in X_bump.columns:
-            try:
-                X_bump[col] = pd.to_numeric(X_bump[col], errors="coerce").fillna(0) * 1.50
-            except Exception:
-                pass
-    y0, _ = pred.predict(X_now); yb, _ = pred.predict(X_bump)
-    try:
-        delta_bump = float(y0.iloc[0]) - float(yb.iloc[0])
-        st.write(f"Δ prediction with +50% bump on proxies: {delta_bump: .4f} W "
-                 f"(baseline {float(y0.iloc[0]):.4f} → bumped {float(yb.iloc[0]):.4f})")
-        if abs(delta_bump) < 1e-6:
-            st.warning("No change detected. Model may not split on these proxies. Consider refreshing SHAP / retraining.")
-    except Exception:
-        pass
 
 # --- Context + Expected Save ---
 exp_save = float(X_sim.get("_expected_save_W", [0]).iloc[0])
@@ -514,19 +509,10 @@ ctx = (row[["speed","rpm","ambient_temp","cabin_temp"]]
 st.dataframe(ctx, use_container_width=True)
 st.caption(f"Calibrated expected save (info): ~{exp_save:.1f} W (UI guidance only).")
 
-# ### PHASE 4: SHAP Top-10 bar (replaces live table)
-with st.expander("🔎 Explain this prediction (SHAP)", expanded=False):
-    # Offline sample (kept as-is)
-    p = Path("models/shap_sample_row.json")
-    if p.exists():
-        data = json.loads(p.read_text())
-        st.write(f"Sample explanation (row {data['row_index']}): Top contributors")
-        st.dataframe(pd.DataFrame(data["contribs"]), use_container_width=True)
-    else:
-        st.info("Run once to generate SHAP outputs: `python -m ac_advisor.shap_analysis`")
+# === Explanation (SHAP) — horizontal, clear labels, padded left ===
+st.subheader("Explanation (SHAP)")
 
-    # Live SHAP — Top 10 bar for the selected row
-    try:
+try:
         from catboost import Pool
         cols = list(pred.feature_cols)
         X_cur = X_now.reindex(columns=cols, fill_value=0)
@@ -540,9 +526,11 @@ with st.expander("🔎 Explain this prediction (SHAP)", expanded=False):
             y=alt.Y("feature:N", sort="-x", title=None)
         )
         st.altair_chart(bar, use_container_width=True)
-    except Exception as e:
+except Exception as e:
         st.caption("Live SHAP unavailable for this row/model:")
         st.exception(e)
+
+
 
 # ### PHASE 4: Sidebar KPIs (rollups from logs)
 with st.sidebar:
