@@ -16,6 +16,71 @@ from ac_advisor.guardrails import defog_risk, comfort_guard
 
 st.set_page_config(page_title="A/C Energy Advisor", page_icon="❄️", layout="wide")
 
+# =========================
+# AC Advisor — Header / Banner
+# =========================
+
+# Optional local images (add later if you like):
+# - Put a square-ish logo at:   assets/ac-advisor-logo.png
+# - Or a wide banner at:        assets/banner.png
+# Both are optional. Code gracefully falls back to text if not present.
+
+from pathlib import Path
+
+def render_header():
+    assets_dir = Path("assets")
+    logo_path   = assets_dir / "ac-advisor-logo.png"
+    banner_path = assets_dir / "banner.png"
+
+    # Prefer a nice wide banner image if present
+    if banner_path.exists():
+        st.image(str(banner_path), use_container_width=True)
+    else:
+        # Gradient title banner (no image)
+        st.markdown(
+            """
+            <div style="
+                background: linear-gradient(90deg, #0ea5e9, #0369a1);
+                padding: 1.2rem 2rem;
+                border-radius: 12px;
+                color: white;
+                text-align: center;
+                font-size: 1.8rem;
+                font-weight: 650;
+                letter-spacing: 0.3px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+                ">
+                ❄️ <span style="white-space:nowrap;">AC Advisor</span> — Intelligent Energy Optimization for Automobile A/C
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Subline / tagline row with optional small logo on the left
+    c1, c2 = st.columns([1, 6], vertical_alignment="center")
+    with c1:
+        if logo_path.exists():
+            st.image(str(logo_path), caption="", width=72)
+        else:
+            st.markdown("<div style='font-size:2rem;'>❄️</div>", unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(
+            """
+            <div style="font-size:1.0rem; color:#475569; line-height:1.45; margin-top:0.2rem;">
+                <b>Predict • Simulate • Save</b> — A data-driven advisor that estimates A/C power, 
+                explores “what-if” actions (setpoint, fan, recirculation), and quantifies energy savings without compromising comfort.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("---")
+
+# Render it now
+render_header()
+
+
 # ---- Safe "apply" mechanism + toast BEFORE widgets are created ----
 def _apply_pending_changes():
     # apply any pending widget updates from previous run
@@ -75,7 +140,7 @@ with st.sidebar:
         st.session_state["__notify__"] = "Reset controls to baseline"
         st.rerun()
 
-st.title("Energy Prediction for Automobile A/C — What-If + AI Coach")
+# --- st.title("Energy Prediction for Automobile A/C — What-If + AI Coach") ---
 st.caption("Two-pass prediction: Baseline vs Simulation → Estimated saving (W) & comfort.")
 
 # --- Proxies (physics/SHAP-informed) ---
@@ -583,3 +648,46 @@ log_interaction({
     "blocked_comfort": blocked_comfort,
     "proxies": proxy_cols
 })
+
+# =========================
+# AC Advisor — About / Footer
+# =========================
+
+def render_about_footer():
+    st.markdown("---")
+    with st.expander("ℹ️ About this project", expanded=False):
+        st.markdown(
+            """
+            **AC Advisor** is a research-driven application developed at **California State University, Northridge (CSUN)**.
+
+            **Professor / Supervisor**  
+            • Dr. Taehyung (“George”) Wang
+
+            **Creators**  
+            • Hemanth Kumar Tulabandula  
+            • Kiranmayee Lokam
+
+            **Project Goal**  
+            Build a practical, explainable assistant that predicts automobile A/C energy usage from real-world telemetry  
+            and guides drivers toward safe, comfort-aware energy savings using machine learning and physics-informed rules.
+
+            **Key Capabilities**  
+            • CatBoost-based A/C power prediction (baseline vs. simulation)  
+            • What-If controls: setpoint Δ, fan Δ, recirculation ON/OFF  
+            • AI Coach (context-aware, with guardrails for comfort/defog)  
+            • Trip Replay & cumulative Wh saved visualization  
+            • One-click PDF report export with embedded charts
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # Tiny centered footer
+    st.markdown(
+        "<p style='text-align:center; color:#6b7280; font-size:0.90rem; margin-top:1.2rem;'>"
+        "© 2025 Hemanth Kumar Tulabandula & Kiranmayee Lokam · California State University, Northridge"
+        "</p>",
+        unsafe_allow_html=True
+    )
+
+# Render it now
+render_about_footer()
