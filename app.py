@@ -17,68 +17,103 @@ from ac_advisor.guardrails import defog_risk, comfort_guard
 st.set_page_config(page_title="A/C Energy Advisor", page_icon="❄️", layout="wide")
 
 # =========================
-# AC Advisor — Header / Banner
+# AC Advisor — Header: Logo Left, Text Center
 # =========================
-
-# Optional local images (add later if you like):
-# - Put a square-ish logo at:   assets/ac-advisor-logo.png
-# - Or a wide banner at:        assets/banner.png
-# Both are optional. Code gracefully falls back to text if not present.
-
 from pathlib import Path
+import base64
+import streamlit as st
+
+def _img_as_data_uri(p: Path) -> str | None:
+    try:
+        b64 = base64.b64encode(p.read_bytes()).decode("utf-8")
+        ext = p.suffix.lower().lstrip(".") or "png"
+        return f"data:image/{ext};base64,{b64}"
+    except Exception:
+        return None
 
 def render_header():
-    assets_dir = Path("assets")
-    logo_path   = assets_dir / "ac-advisor-logo.png"
-    banner_path = assets_dir / "banner.png"
+    assets = Path("assets")
+    candidates = [assets / "ac_logo.png", assets / "ac-advisor-logo.png", assets / "logo.png"]
+    logo_src = next((_img_as_data_uri(p) for p in candidates if p.exists()), None)
 
-    # Prefer a nice wide banner image if present
-    if banner_path.exists():
-        st.image(str(banner_path), use_container_width=True)
+    st.markdown("""
+    <style>
+      .header-container {
+          display: grid;
+          grid-template-columns: 80px 1fr 80px; /* left, center, right */
+          align-items: center;
+          background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+          border-radius: 12px;
+          padding: 0.8rem 1.2rem;
+          color: white;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+          position: relative;
+      }
+      .header-logo {
+          width: 140px;
+          height: 90px;
+          border-radius: 12px;
+          background-color: white;
+          object-fit: contain;
+          justify-self: start;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      }
+      .header-text {
+          text-align: center;  /* 👈 centers text block */
+      }
+      .header-title {
+          font-size: 1.8rem;
+          font-weight: 750;
+          margin: 0;
+          letter-spacing: 0.3px;
+      }
+      .header-sub {
+          font-size: 1.05rem;
+          font-weight: 400;
+          margin: 0;
+          opacity: 0.95;
+      }
+      .tagline {
+          text-align: center;
+          margin-top: 0.6rem;
+          font-size: 1.0rem;
+          color: white;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # --- HTML layout ---
+    if logo_src:
+        header_html = f"""
+        <div class="header-container">
+            <img src="{logo_src}" class="header-logo" alt="Logo">
+            <div class="header-text">
+                <div class="header-title">❄️ AC Advisor</div>
+                <div class="header-sub">Intelligent Energy Optimization for Automobile Air Conditioning Systems</div>
+            </div>
+            <div></div> <!-- right spacer -->
+        </div>
+        <div class='tagline'><b>Predict • Simulate • Save</b> — Data-driven climate control insights</div>
+        """
     else:
-        # Gradient title banner (no image)
-        st.markdown(
-            """
-            <div style="
-                background: linear-gradient(90deg, #0ea5e9, #0369a1);
-                padding: 1.2rem 2rem;
-                border-radius: 12px;
-                color: white;
-                text-align: center;
-                font-size: 1.8rem;
-                font-weight: 650;
-                letter-spacing: 0.3px;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.18);
-                ">
-                ❄️ <span style="white-space:nowrap;">AC Advisor</span> — Intelligent Energy Optimization for Automobile A/C
+        header_html = """
+        <div class="header-container">
+            <div></div>
+            <div class="header-text">
+                <div class="header-title">❄️ AC Advisor</div>
+                <div class="header-sub">Intelligent Energy Optimization for Automobile Air Conditioning Systems</div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            <div></div>
+        </div>
+        <div class='tagline'><b>Predict • Simulate • Save</b> — Data-driven climate control insights</div>
+        """
 
-    # Subline / tagline row with optional small logo on the left
-    c1, c2 = st.columns([1, 6], vertical_alignment="center")
-    with c1:
-        if logo_path.exists():
-            st.image(str(logo_path), caption="", width=72)
-        else:
-            st.markdown("<div style='font-size:2rem;'>❄️</div>", unsafe_allow_html=True)
-
-    with c2:
-        st.markdown(
-            """
-            <div style="font-size:1.0rem; color:#475569; line-height:1.45; margin-top:0.2rem;">
-                <b>Predict • Simulate • Save</b> — A data-driven advisor that estimates A/C power, 
-                explores “what-if” actions (setpoint, fan, recirculation), and quantifies energy savings without compromising comfort.
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
+    st.markdown(header_html, unsafe_allow_html=True)
     st.markdown("---")
 
-# Render it now
+# Render banner
 render_header()
+
 
 
 # ---- Safe "apply" mechanism + toast BEFORE widgets are created ----
@@ -650,44 +685,163 @@ log_interaction({
 })
 
 # =========================
-# AC Advisor — About / Footer
+# AC Advisor — About (fixed: bg only when expanded)
 # =========================
+import base64
+from pathlib import Path
+
+def _b64safe(p: Path):
+    try:
+        return base64.b64encode(p.read_bytes()).decode("ascii") if p.exists() else None
+    except Exception:
+        return None
 
 def render_about_footer():
-    st.markdown("---")
-    with st.expander("ℹ️ About this project", expanded=False):
+    assets = Path("assets")
+    prof64    = _b64safe(assets / "professor_wang.jpg")
+    hemanth64 = _b64safe(assets / "hemanth.jpg")
+    kiran64   = _b64safe(assets / "kiranmayee.jpg")
+
+    # Scoped CSS
+    st.markdown("""
+    <style>
+      .aa-h2 { margin: 0 0 .35rem; font-size: 1.28rem; font-weight: 800; }
+      .aa-h3 { margin: .9rem 0 .25rem; font-size: 1.06rem; font-weight: 700; }
+      .aa-p  { margin: .2rem 0 .55rem; line-height: 1.55; }
+      .aa-ul { margin: .2rem 0 .6rem 1.0rem; }
+      .aa-rule { height:1px; background: rgba(120,120,120,.25); border:0; margin: .9rem 0; }
+      /* background wrapper only inside expander */
+      
+      /* team gallery */
+      .aa-gallery { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; margin-top:.4rem; }
+      .aa-card {
+        width: 280px; max-width: 92vw;
+        border-radius: 16px; padding: 16px 14px 14px;
+        background: rgba(120,120,120,.06);
+        border: 1px solid rgba(120,120,120,.18);
+        box-shadow: 0 6px 16px rgba(0,0,0,.08);
+        text-align:center;
+      }
+      .aa-avatar {
+        width: 118px; height: 118px; border-radius: 50%;
+        object-fit: cover; object-position: center;
+        border: 3px solid rgba(255,255,255,.55);
+        box-shadow: 0 6px 18px rgba(0,0,0,.15);
+        margin-bottom: 10px;
+      }
+      .aa-name { font-weight: 800; font-size: 1.0rem; }
+      .aa-role { font-size: .92rem; opacity: .85; margin-top: 2px; }
+      .aa-li { text-align:left; margin: 8px auto 0; max-width: 90%; }
+      .aa-foot { text-align:center; color:#6b7280; font-size:.92rem; margin-top:.9rem; }
+                
+                
+        .aa-ul {
+        list-style: none;
+        margin: 0.2rem 0 0.4rem 0;
+        padding-left: 0;
+        text-align: left;
+        }
+
+        .aa-ul li {
+        position: relative;
+        padding-left: 16px;
+        margin: 4px 0;
+        line-height: 1.4;
+        }
+
+        .aa-ul li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 8px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #0ea5e9; /* soft cyan accent */
+        box-shadow: 0 0 2px rgba(14,165,233,0.4);
+        }
+
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Expander; set expanded=True if you want it open by default
+    with st.expander("About this Project", expanded=False):
+        st.markdown("<div class='aa-wrap'>", unsafe_allow_html=True)
+
+        st.markdown("<div class='aa-h2'>AC Advisor</div>", unsafe_allow_html=True)
         st.markdown(
-            """
-            **AC Advisor** is a research-driven application developed at **California State University, Northridge (CSUN)**.
-
-            **Professor / Supervisor**  
-            • Dr. Taehyung (“George”) Wang
-
-            **Creators**  
-            • Hemanth Kumar Tulabandula  
-            • Kiranmayee Lokam
-
-            **Project Goal**  
-            Build a practical, explainable assistant that predicts automobile A/C energy usage from real-world telemetry  
-            and guides drivers toward safe, comfort-aware energy savings using machine learning and physics-informed rules.
-
-            **Key Capabilities**  
-            • CatBoost-based A/C power prediction (baseline vs. simulation)  
-            • What-If controls: setpoint Δ, fan Δ, recirculation ON/OFF  
-            • AI Coach (context-aware, with guardrails for comfort/defog)  
-            • Trip Replay & cumulative Wh saved visualization  
-            • One-click PDF report export with embedded charts
-            """,
-            unsafe_allow_html=True,
+            "<div class='aa-p'>AC Advisor is a research-driven application developed at "
+            "<b>California State University, Northridge (CSUN)</b>.</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown("<div class='aa-h3'>Project Goal</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='aa-p'>Develop an intelligent advisor that predicts automobile A/C energy usage from real telemetry "
+            "and recommends <b>comfort-aware</b> actions to reduce consumption.</div>",
+            unsafe_allow_html=True
         )
 
-    # Tiny centered footer
+        st.markdown("<div class='aa-h3'>Key Capabilities</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<ul class='aa-ul'>"
+            "<li>CatBoost-based power prediction (baseline vs. simulation)</li>"
+            "<li>What-If controls: setpoint Δ, fan Δ, recirculation ON/OFF</li>"
+            "<li>AI Coach with comfort & defog guardrails</li>"
+            "<li>Trip Replay and cumulative Wh saved visualization</li>"
+            "<li>One-click PDF report export with embedded charts</li>"
+            "</ul>",
+            unsafe_allow_html=True
+        )
+        st.markdown("<div class='aa-h3'>Supervisor</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='aa-p'><b>Dr. Taehyung (“George”) Wang</b> — Professor, Computer Science, CSUN.</div>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("<div class='aa-h3'>Creators</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='aa-p'><b>Hemanth Kumar Tulabandula</b> &nbsp;|&nbsp; "
+            "<b>Kiranmayee Lokam</b> — Graduate Students, CSUN.</div>",
+            unsafe_allow_html=True
+        )
+
+        
+
+        st.markdown("<hr class='aa-rule'/>", unsafe_allow_html=True)
+
+        # images at the END
+        gallery_html = f"""
+        <div class="aa-gallery">
+          <div class="aa-card">
+            {'<img class="aa-avatar" src="data:image/jpeg;base64,'+ (prof64 or '') +'"/>' if prof64 else ''}
+            <div class="aa-name">Dr. Taehyung (“George”) Wang</div>
+            <div class="aa-role">Professor · Computer Science · CSUN</div>
+            <ul class="aa-ul aa-li"><li>Data Mining, Software Engineering, Web Engineering </li></ul>
+          </div>
+          <div class="aa-card">
+            {'<img class="aa-avatar" src="data:image/jpeg;base64,'+ (hemanth64 or '') +'"/>' if hemanth64 else ''}
+            <div class="aa-name">Hemanth Kumar Tulabandula</div>
+            <div class="aa-role">Graduate Student · CSUN</div>
+            <ul class="aa-ul aa-li"><li>Data pipeline, Data preprocessing, Model design, Model validation, UI design, App integration</li></ul>
+          </div>
+          <div class="aa-card">
+            {'<img class="aa-avatar" src="data:image/jpeg;base64,'+ (kiran64 or '') +'"/>' if kiran64 else ''}
+            <div class="aa-name">Kiranmayee Lokam</div>
+            <div class="aa-role">Graduate Student · CSUN</div>
+            <ul class="aa-ul aa-li"><li>Data pipeline, Data preprocessing, Model design, Model validation, UI design, App integration</li></ul>
+          </div>
+        </div>
+        """
+        st.markdown(gallery_html, unsafe_allow_html=True)
+
+        st.markdown("</div>", unsafe_allow_html=True)  # close .aa-wrap
+
+    # centered copyright below expander
     st.markdown(
-        "<p style='text-align:center; color:#6b7280; font-size:0.90rem; margin-top:1.2rem;'>"
-        "© 2025 Hemanth Kumar Tulabandula & Kiranmayee Lokam · California State University, Northridge"
-        "</p>",
+        "<p class='aa-foot'>© 2025 Hemanth Kumar Tulabandula & Kiranmayee Lokam · California State University, Northridge</p>",
         unsafe_allow_html=True
     )
 
-# Render it now
+
+# Render the polished About section
 render_about_footer()
