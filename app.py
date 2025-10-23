@@ -207,6 +207,30 @@ model_version = st.segmented_control("Model", options=["v1", "v2"], default="v1"
 pred = load_predictor(version=model_version)
 df = load_data()
 
+# --- Multi-model registry (auto from metadata) ---
+from ac_advisor.model_registry import build_registry
+import json
+from pathlib import Path as _P
+
+def _load_seq_config():
+    m = _P("models")
+    # try GRU metadata first, then Transformer, else fallback to defaults
+    for meta_name in ["metadata_gru.json", "metadata_transformer.json", "metadata_mamba.json"]:
+        meta_path = m / meta_name
+        if meta_path.exists():
+            meta = json.loads(meta_path.read_text())
+            cols = meta.get("feature_cols")
+            win  = int(meta.get("seq_len", 32))
+            if cols and isinstance(cols, list):
+                return cols, win
+    # fallback (keep in sync with your training)
+    return ["speed","ambient_temp","cabin_temp","fan","recirc","setpoint"], 32
+
+FEATURE_COLS_DL, SEQ_WINDOW = _load_seq_config()
+REGISTRY = build_registry(feature_cols=FEATURE_COLS_DL, window=SEQ_WINDOW)
+
+
+
 st.sidebar.success(f"CatBoost model loaded ✅  ({model_version})")
 
 with st.sidebar:
@@ -323,20 +347,82 @@ with st.expander("What do these bands mean?"):
         """
     )
 
-# --- Two-pass predictions ---
-X_now = make_features(
-    row, setpoint_delta=0, fan_delta=0, recirc_on=False,
-    sensitivity=1.0, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
-)
-X_sim = make_features(
-    row, setpoint_delta=setpoint_delta, fan_delta=fan_delta, recirc_on=recirc_on,
-    sensitivity=sensitivity, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
-)
+# --- Two-pass predictions (by selected_model) ---
+use_seq = selected_model in ("GRU (seq)", "Transformer (seq)", "Mamba (exp)") and MODEL_AVAILABLE.get(selected_model, False)
 
-pred_now_series, (lo_now, hi_now) = pred.predict(X_now)
-pred_sim_series, (lo_sim, hi_sim) = pred.predict(X_sim)
-pred_now = float(pred_now_series.iloc[0])
-pred_sim = float(pred_sim_series.iloc[0])
+if use_seq:
+    # Keep your existing feature generation (for consistent proxy/physics logic)
+    X_now = make_features(
+        row, setpoint_delta=0, fan_delta=0, recirc_on=False,
+        sensitivity=1.0, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+    )
+    X_sim = make_features(
+        row, setpoint_delta=setpoint_delta, fan_delta=fan_delta, recirc_on=recirc_on,
+        sensitivity=sensitivity, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+    )
+
+    # Build a SEQ_WINDOW history in FEATURE_COLS_DL order
+    try:
+        start = max(0, row_idx - SEQ_WINDOW + 1)
+        hist = df.iloc[start:row_idx+1].reindex(columns=FEATURE_COLS_DL).astype(float)
+
+        if len(hist) < SEQ_WINDOW:
+            pad = np.repeat(hist.iloc[[0]].values, SEQ_WINDOW - len(hist), axis=0)
+            seq_now = np.vstack([pad, hist.values])
+        else:
+            seq_now = hist.values[-SEQ_WINDOW:]
+
+        # Simulated sequence = apply deltas to last timestep
+        seq_sim = seq_now.copy()
+        if "setpoint" in FEATURE_COLS_DL:
+            seq_sim[-1, FEATURE_COLS_DL.index("setpoint")] += float(setpoint_delta)
+        if "fan" in FEATURE_COLS_DL:
+            seq_sim[-1, FEATURE_COLS_DL.index("fan")] += float(fan_delta)
+        if "recirc" in FEATURE_COLS_DL:
+            seq_sim[-1, FEATURE_COLS_DL.index("recirc")] = 1.0 if recirc_on else 0.0
+
+        # Load & predict with the selected sequence model
+        mdl = REGISTRY[selected_model]
+        mdl.load()
+        x_now_vec = X_now.values[-1] if hasattr(X_now, "values") else np.array(X_now)
+        x_sim_vec = X_sim.values[-1] if hasattr(X_sim, "values") else np.array(X_sim)
+        pred_now = mdl.predict_one_row(X_now=x_now_vec, seq=seq_now)
+        pred_sim = mdl.predict_one_row(X_now=x_sim_vec, seq=seq_sim)
+
+        # deep models don't have quantile bands
+        lo_now = hi_now = lo_sim = hi_sim = None
+
+    except Exception as e:
+        # If anything goes wrong, fall back to CatBoost so the app never breaks
+        st.warning(f"{selected_model} inference failed; falling back to CatBoost. Details: {e}")
+        X_now = make_features(
+            row, setpoint_delta=0, fan_delta=0, recirc_on=False,
+            sensitivity=1.0, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+        )
+        X_sim = make_features(
+            row, setpoint_delta=setpoint_delta, fan_delta=fan_delta, recirc_on=recirc_on,
+            sensitivity=sensitivity, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+        )
+        pred_now_series, (lo_now, hi_now) = pred.predict(X_now)
+        pred_sim_series, (lo_sim, hi_sim) = pred.predict(X_sim)
+        pred_now = float(pred_now_series.iloc[0])
+        pred_sim = float(pred_sim_series.iloc[0])
+
+else:
+    # CatBoost path (original flow)
+    X_now = make_features(
+        row, setpoint_delta=0, fan_delta=0, recirc_on=False,
+        sensitivity=1.0, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+    )
+    X_sim = make_features(
+        row, setpoint_delta=setpoint_delta, fan_delta=fan_delta, recirc_on=recirc_on,
+        sensitivity=sensitivity, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
+    )
+
+    pred_now_series, (lo_now, hi_now) = pred.predict(X_now)
+    pred_sim_series, (lo_sim, hi_sim) = pred.predict(X_sim)
+    pred_now = float(pred_now_series.iloc[0])
+    pred_sim = float(pred_sim_series.iloc[0])
 
 saving_W = pred_now - pred_sim
 saving_pct = (saving_W / max(1e-6, pred_now)) * 100.0
