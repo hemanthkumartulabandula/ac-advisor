@@ -246,7 +246,7 @@ REGISTRY = build_registry(feature_cols=FEATURE_COLS_DL, window=SEQ_WINDOW)
 
 
 
-st.sidebar.success(f"CatBoost model loaded ✅  ({model_version})")
+#--- st.sidebar.success(f"CatBoost model loaded ✅  ({model_version})") ---
 
 with st.sidebar:
     st.markdown("### Model")
