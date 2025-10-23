@@ -40,6 +40,21 @@ MODEL_AVAILABLE = {
     "Mamba (exp)": False,           # stays False until we truly have Mamba weights
 }
 
+# --- Auto-toggle availability based on files present in ./models ---
+from pathlib import Path as _P
+
+def _has(*names: str) -> bool:
+    m = _P("models")
+    return all((m / n).exists() for n in names)
+
+# Flip availability for the models you’ve actually exported
+MODEL_AVAILABLE.update({
+    "GRU (seq)":            _has("gru.pt"),
+    "Transformer (seq)":    _has("transformer.pt"),
+    "Mamba (exp)":          _has("mamba.pt"),                 # stays False if you didn’t train Mamba
+    "CatBoost (Quantile)":  _has("cb_q10.cbm", "cb_q90.cbm"), # only if you wired quantile models
+})
+
 st.set_page_config(page_title="A/C Energy Advisor", page_icon="❄️", layout="wide")
 
 # =========================
