@@ -1,8 +1,3 @@
-{
-  "catboost_v2": {
-    "mae": 3.8089157789935766,
-    "rmse": 7.012654844755121,
-    "r2": 0.999604316669584,
-    "features": 25
-  }
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:9e966a421329c5a9f87c9495be0ff912fd601c3a5415673ebf7d0eab8ca062cb
+size 136

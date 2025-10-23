@@ -14,6 +14,32 @@ from ac_advisor.coach import log_interaction
 from ac_advisor.coach2 import nearest_context_advice, band_from_temp, speed_bucket
 from ac_advisor.guardrails import defog_risk, comfort_guard
 
+# === Model lineup + metrics (UI only for now) ===
+MODEL_LINEUP = [
+    "CatBoost (Point)",
+    "CatBoost (Quantile)",
+    "GRU (seq)",
+    "Transformer (seq)",
+    "Mamba (exp)",
+]
+
+MODEL_METRICS = {
+    "CatBoost (Point)":    {"MAE": 4.21,  "RMSE": 7.03,  "R2": 0.9996, "notes": "Default"},
+    "CatBoost (Quantile)": {"MAE": 4.21,  "RMSE": 7.03,  "R2": 0.9996, "notes": "P10–P90 uncertainty"},
+    "GRU (seq)":           {"MAE": 12.71, "RMSE": 21.77, "R2": 0.9960, "notes": "Sequence (32-step)"},
+    "Transformer (seq)":   {"MAE": 13.18, "RMSE": 19.87, "R2": 0.9966, "notes": "Sequence (32-step)"},
+    "Mamba (exp)":         {"MAE": 13.62, "RMSE": 23.33, "R2": 0.9953, "notes": "Experimental"},
+}
+
+# Availability flags (we’ll flip to True after we export weights in STEP 2/3)
+MODEL_AVAILABLE = {
+    "CatBoost (Point)": True,
+    "CatBoost (Quantile)": False,   # set True later if you wire quantile models
+    "GRU (seq)": False,
+    "Transformer (seq)": False,
+    "Mamba (exp)": False,           # stays False until we truly have Mamba weights
+}
+
 st.set_page_config(page_title="A/C Energy Advisor", page_icon="❄️", layout="wide")
 
 # =========================
@@ -167,6 +193,21 @@ pred = load_predictor(version=model_version)
 df = load_data()
 
 st.sidebar.success(f"CatBoost model loaded ✅  ({model_version})")
+
+with st.sidebar:
+    st.markdown("### Model")
+    selected_model = st.selectbox("Select model", MODEL_LINEUP, index=0)
+
+    # Availability message (predictions still use CatBoost until we enable others)
+    if not MODEL_AVAILABLE.get(selected_model, False):
+        st.info("⚠️ This model isn’t available on this device yet. Predictions fall back to CatBoost.")
+
+    # Micro KPIs
+    mm = MODEL_METRICS.get(selected_model, {})
+    c1, c2, c3 = st.columns(3)
+    c1.metric("MAE (W)",  f"{mm.get('MAE','—')}")
+    c2.metric("RMSE (W)", f"{mm.get('RMSE','—')}")
+    c3.metric("R²",       f"{mm.get('R2','—')}")
 
 # --- Sidebar Reset Button ---
 with st.sidebar:
@@ -511,8 +552,8 @@ st.caption(f"Calibrated expected save (info): ~{exp_save:.1f} W (UI guidance onl
 
 # === Explanation (SHAP) — horizontal, clear labels, padded left ===
 st.subheader("Explanation (SHAP)")
-
-try:
+if selected_model.startswith("CatBoost"):
+    try:
         from catboost import Pool
         cols = list(pred.feature_cols)
         X_cur = X_now.reindex(columns=cols, fill_value=0)
@@ -526,9 +567,11 @@ try:
             y=alt.Y("feature:N", sort="-x", title=None)
         )
         st.altair_chart(bar, use_container_width=True)
-except Exception as e:
+    except Exception as e:
         st.caption("Live SHAP unavailable for this row/model:")
         st.exception(e)
+else:
+    st.caption("Explainability: SHAP is shown for CatBoost. For deep models, Integrated Gradients will be added later.")
 
 
 
@@ -671,6 +714,23 @@ log_interaction({
     "blocked_comfort": blocked_comfort,
     "proxies": proxy_cols
 })
+
+
+
+st.markdown("### Model Leaderboard")
+lb_rows = []
+for name in MODEL_LINEUP:
+    m = MODEL_METRICS.get(name, {})
+    lb_rows.append({
+        "Model": name,
+        "MAE (W)": m.get("MAE", "—"),
+        "RMSE (W)": m.get("RMSE", "—"),
+        "R²": m.get("R2", "—"),
+        "Notes": m.get("notes", ""),
+        "Status": "Available" if MODEL_AVAILABLE.get(name, False) else "Unavailable",
+    })
+st.dataframe(pd.DataFrame(lb_rows), use_container_width=True, hide_index=True)
+st.caption("Notes: ‘Quantile’ powers P10–P90 uncertainty bands. Sequence models use a 32-step window. ‘Experimental’ = preliminary.")
 
 # =========================
 # AC Advisor — About (fixed: bg only when expanded)
