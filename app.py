@@ -688,7 +688,7 @@ def render_about_footer():
     assets = Path("assets")
     prof64    = _b64safe(assets / "professor_wang.jpg")
     hemanth64 = _b64safe(assets / "hemanth.jpg")
-    kiran64   = _b64safe(assets / "kiranmayee.jpg")
+    kiran64   = _b64safe(assets / "kiranmayee.jpeg")
 
     # Scoped CSS
     st.markdown("""
