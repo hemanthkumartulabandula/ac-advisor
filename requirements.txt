@@ -7,6 +7,7 @@ numpy==1.26.4
 
 # --- Modeling ---
 catboost==1.2.7
+torch==2.4.1               # ✅ CPU build on Streamlit Cloud (Linux)
 
 # --- Visualization ---
 altair==5.3.0
@@ -20,6 +21,7 @@ llvmlite==0.42.0
 # --- Utilities ---
 pyyaml==6.0.1
 reportlab==4.2.2
+scikit-learn==1.7.2        # ✅ matches your local exports (RMSE API etc.)
 
 # --- Optional helpful libs that Streamlit often expects ---
 scipy==1.16.2
