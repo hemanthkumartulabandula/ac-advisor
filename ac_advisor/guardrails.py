@@ -1,4 +1,3 @@
-# ac_advisor/guardrails.py
 import pandas as pd
 
 def defog_risk(row: pd.Series) -> bool:

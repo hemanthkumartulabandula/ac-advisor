@@ -1,4 +1,3 @@
-# ac_advisor/auto_proxies.py
 from pathlib import Path
 import json
 import pandas as pd
@@ -30,16 +29,16 @@ def from_shap(feature_cols, shap_csv="models/shap_importance.csv"):
     try:
         imp = pd.read_csv(shap_csv)
     except Exception:
-        return []  # shap not available
+        return []  
     ranked = [f for f in imp["feature"].tolist() if f in feature_cols]
     return ranked
 
 def select_proxies(feature_cols, shap_csv="models/shap_importance.csv"):
     """Return a dict {'setpoint': col, 'fan': col, 'recirc': col} choosing real, influential columns."""
     chosen = {}
-    ranked = from_shap(feature_cols, shap_csv)  # may be empty
+    ranked = from_shap(feature_cols, shap_csv)  
 
-    # helper: pick the highest-ranked feature that matches any keywords
+    
     def pick_with_rank(key):
         # 1) exact/substring candidates first
         cand = pick_from_names(feature_cols, CANDIDATES[key])

@@ -113,7 +113,7 @@ def nearest_context_advice(ambient_c: float, speed: float | None) -> dict:
         acts.append({"id":"fan_down","label":"Reduce fan (−1 to −2)",    "est_W": fan_down, "n": n_fan_down})
         acts.append({"id":"rec_on",  "label":"Turn Recirculation ON",    "est_W": recirc_on,"n": n_rec_on})
 
-    # If very little data, keep physics order (don't sort by noisy means)
+    # If very little data, keep physics order 
     if n >= 5:
         def score(a):
             v = a["est_W"]

@@ -84,7 +84,7 @@ def make_features(row_df: pd.DataFrame,
     k_r  = predictor.effects.get("recirc_gain_W", 2.0)
     veh  = predictor.scale_for_vehicle(vehicle_type)
 
-    # Sign logic for UI hint
+
     hot, cold = ambient >= 28, ambient <= 12
     sgn_sp = -1 if hot else (1 if cold else -1)    # hotter: +Δ saves; colder: +Δ costs
     sgn_r  = -1 if hot else (-0.3 if cold else -0.5)  # smaller benefit in cold/mild

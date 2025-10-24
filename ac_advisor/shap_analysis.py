@@ -14,7 +14,7 @@ FEATS = Path("models/feature_columns.json")
 OUT_IMP = Path("models/shap_importance.csv")
 OUT_ROW = Path("models/shap_sample_row.json")
 
-SAMPLE_ROW_INDEX = 50   # change in app at runtime if you like
+SAMPLE_ROW_INDEX = 50   
 
 def main():
     model = CatBoostRegressor()
@@ -26,7 +26,7 @@ def main():
     # CatBoost native SHAP
     pool = Pool(X)
     shap_vals = model.get_feature_importance(pool, type="ShapValues")
-    # shap_vals shape = (n_rows, n_features + 1) last col is base value
+    
     phi = shap_vals[:, :-1]
     names = features
 
@@ -39,7 +39,7 @@ def main():
     imp.to_csv(OUT_IMP, index=False)
     print(f"Wrote {OUT_IMP} (top 10)\n", imp.head(10))
 
-    # One-row explanation (for app demo)
+    
     r = min(SAMPLE_ROW_INDEX, len(X)-1)
     row_phi = pd.Series(phi[r], index=names).sort_values(key=np.abs, ascending=False)
     row_out = [{"feature": k, "shap": float(v)} for k, v in row_phi.head(12).items()]

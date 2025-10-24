@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-
-# ### PHASE 4: extra imports (safe)
 import numpy as np
-import altair as alt  # for nicer charts
+import altair as alt 
 import json, datetime, pathlib
 
 from ac_advisor.predictor import Predictor
@@ -14,7 +12,7 @@ from ac_advisor.coach import log_interaction
 from ac_advisor.coach2 import nearest_context_advice, band_from_temp, speed_bucket
 from ac_advisor.guardrails import defog_risk, comfort_guard
 
-# === Model lineup + metrics (UI only for now) ===
+# === Model lineup + metrics ===
 MODEL_LINEUP = [
     "CatBoost (Point)",
     "CatBoost (Quantile)",
@@ -34,10 +32,10 @@ MODEL_METRICS = {
 # Availability flags (we’ll flip to True after we export weights in STEP 2/3)
 MODEL_AVAILABLE = {
     "CatBoost (Point)": True,
-    "CatBoost (Quantile)": False,   # set True later if you wire quantile models
+    "CatBoost (Quantile)": False,   
     "GRU (seq)": False,
     "Transformer (seq)": False,
-    "Mamba (exp)": False,           # stays False until we truly have Mamba weights
+    "Mamba (exp)": False,          
 }
 
 # --- Auto-toggle availability based on files present in ./models ---
@@ -51,8 +49,8 @@ def _has(*names: str) -> bool:
 MODEL_AVAILABLE.update({
     "GRU (seq)":            _has("gru.pt"),
     "Transformer (seq)":    _has("transformer.pt"),
-    "Mamba (exp)":          _has("mamba.pt"),                 # stays False if you didn’t train Mamba
-    "CatBoost (Quantile)":  _has("cb_q10.cbm", "cb_q90.cbm"), # only if you wired quantile models
+    "Mamba (exp)":          _has("mamba.pt"),                 
+    "CatBoost (Quantile)":  _has("cb_q10.cbm", "cb_q90.cbm"), 
 })
 
 st.set_page_config(page_title="A/C Energy Advisor", page_icon="❄️", layout="wide")
@@ -159,12 +157,12 @@ render_header()
 
 # ---- Safe "apply" mechanism + toast BEFORE widgets are created ----
 def _apply_pending_changes():
-    # apply any pending widget updates from previous run
+    
     pending = st.session_state.pop("__pending_apply__", None)
     if isinstance(pending, dict):
         for k, v in pending.items():
             st.session_state[k] = v
-    # toast (if requested)
+    
     note = st.session_state.pop("__notify__", None)
     if note:
         try:
@@ -252,7 +250,7 @@ with st.sidebar:
     st.markdown("### Model")
     selected_model = st.selectbox("Select model", MODEL_LINEUP, index=0)
 
-    # Availability message (predictions still use CatBoost until we enable others)
+    # Availability message 
     if not MODEL_AVAILABLE.get(selected_model, False):
         st.info("⚠️ This model isn’t available on this device yet. Predictions fall back to CatBoost.")
 
@@ -275,8 +273,8 @@ st.caption("Two-pass prediction: Baseline vs Simulation → Estimated saving (W)
 
 # --- Proxies (physics/SHAP-informed) ---
 proxy_cols = {
-    "setpoint": "voltage_drop",  # warmer setpoint → lower compressor load (hot band)
-    "fan":      "rpm",           # fan speed ↔ rpm
+    "setpoint": "voltage_drop",  # warmer setpoint - lower compressor load (hot band)
+    "fan":      "rpm",           # fan speed - rpm
     "recirc":   "bat_voltage"    # recirc impacts electrical load
 }
 st.caption(
@@ -410,10 +408,10 @@ if use_seq:
         x_sim_vec = X_sim.values[-1] if hasattr(X_sim, "values") else np.array(X_sim)
         pred_now = mdl.predict_one_row(X_now=x_now_vec, seq=seq_now)
         pred_sim = mdl.predict_one_row(X_now=x_sim_vec, seq=seq_sim)
-        lo_now = hi_now = lo_sim = hi_sim = None  # no quantiles for DL models
+        lo_now = hi_now = lo_sim = hi_sim = None  
 
     except Exception as e:
-        # 5) Robust fallback so the UI never breaks
+        
         st.warning(f"{selected_model} inference failed; falling back to CatBoost. Details: {e}")
         X_now = make_features(
             row, setpoint_delta=0, fan_delta=0, recirc_on=False,
@@ -428,7 +426,7 @@ if use_seq:
         pred_now = float(pred_now_series.iloc[0]); pred_sim = float(pred_sim_series.iloc[0])
 
 else:
-    # --- CatBoost path (original flow) ---
+    # --- CatBoost path  ---
     X_now = make_features(
         row, setpoint_delta=0, fan_delta=0, recirc_on=False,
         sensitivity=1.0, predictor=pred, vehicle_type=vehicle_type, proxy_override=proxy_cols
@@ -456,7 +454,7 @@ with lc:
 with rc:
     st.metric("Estimated saving", f"{saving_W:,.1f} W", f"{saving_pct:+.1f}%")
 
-# Prediction intervals (if quantile models exist)
+# Prediction intervals
 if lo_now is not None and hi_now is not None:
     try:
         lo_b, hi_b = float(lo_now[0]), float(hi_now[0])
@@ -484,7 +482,7 @@ st.markdown(
 
 st.caption("Vehicle scaling: **disabled (ICE-only dataset)**. Sensitivity scales the *visible* proxy change; the core model remains consistent.")
 
-# --- Sidebar Export (placed AFTER predictions so all vars exist) ---
+# --- Sidebar Export ---
 with st.sidebar:
     st.markdown("### Export Scenario")
     export_dir = Path("exports"); export_dir.mkdir(parents=True, exist_ok=True)
@@ -572,7 +570,7 @@ with st.expander("Coach: best action for this context", expanded=True):
                     st.session_state["__last_applied_source__"] = "coach"
                     st.rerun()
 
-# ### PHASE 4: Trip Replay with uncertainty band + cumulative Wh
+# Trip Replay with uncertainty band + cumulative Wh
 with st.expander("Trip Replay (±150 rows around selection)", expanded=False):
     try:
         w = 150
@@ -695,7 +693,7 @@ else:
 
 
 
-# ### PHASE 4: Sidebar KPIs (rollups from logs)
+# Sidebar KPIs (rollups from logs)
 with st.sidebar:
     st.markdown("### KPIs (since app start)")
     try:
@@ -721,7 +719,7 @@ with st.sidebar:
         st.warning("KPI computation failed.")
         st.exception(e)
 
-# ### PHASE 4: PDF report export (charts + KPIs, matplotlib export for images)
+# PDF report export (charts + KPIs, matplotlib export for images)
 with st.sidebar:
     st.markdown("### Report")
     want_pdf = st.button("Export PDF report")
@@ -933,7 +931,7 @@ def render_about_footer():
     </style>
     """, unsafe_allow_html=True)
 
-    # Expander; set expanded=True if you want it open by default
+    # Expander;
     with st.expander("About this Project", expanded=False):
         st.markdown("<div class='aa-wrap'>", unsafe_allow_html=True)
 
@@ -978,7 +976,7 @@ def render_about_footer():
 
         st.markdown("<hr class='aa-rule'/>", unsafe_allow_html=True)
 
-        # images at the END
+        
         gallery_html = f"""
         <div class="aa-gallery">
           <div class="aa-card">
@@ -1003,16 +1001,16 @@ def render_about_footer():
         """
         st.markdown(gallery_html, unsafe_allow_html=True)
 
-        st.markdown("</div>", unsafe_allow_html=True)  # close .aa-wrap
+        st.markdown("</div>", unsafe_allow_html=True)  
 
-    # centered copyright below expander
+    # copyright below expander
     st.markdown(
         "<p class='aa-foot'>© 2025 Hemanth Kumar Tulabandula & Kiranmayee Lokam · California State University, Northridge</p>",
         unsafe_allow_html=True
     )
 
 
-# Render the polished About section
+# Render footer
 render_about_footer()
 
 
